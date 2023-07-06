@@ -124,6 +124,7 @@ export default class OpenIMSDK extends Emitter {
         this.iLogin(loginData, operationID)
           .then((res) => {
             this.logoutFlag = false;
+            //
             this.heartbeat();
             resolve(res);
           })
@@ -138,6 +139,7 @@ export default class OpenIMSDK extends Emitter {
         errData.errCode = 111;
         errData.errMsg = "ws connect close...";
         if (!this.logoutFlag) {
+          // 被动退出、即被动触发 close 事件
           Object.values(this.ws2promise).forEach((promise) =>
             promise.mrjet({
               event: promise.mname,
@@ -1774,6 +1776,7 @@ export default class OpenIMSDK extends Emitter {
   //tool methods
 
   private wsSend = (params: WsParams, resolve: (value: WsResponse | PromiseLike<WsResponse>) => void, reject: (reason?: any) => void) => {
+    // 断网时候进行检测
     if (window?.navigator && !window.navigator.onLine) {
       let errData: WsResponse = {
         event: params.reqFuncName,
@@ -1785,6 +1788,7 @@ export default class OpenIMSDK extends Emitter {
       reject(errData);
       return;
     }
+    // TODO 考虑下项目中是否可以加上这个
     if (this.ws?.readyState !== this.ws?.OPEN) {
       let errData: WsResponse = {
         event: params.reqFuncName,
@@ -1812,6 +1816,7 @@ export default class OpenIMSDK extends Emitter {
     }
 
     const ws2p = {
+      // message id 
       oid: params.operationID || uuid(this.uid as string),
       mname: params.reqFuncName,
       mrsve: resolve,
@@ -1819,6 +1824,7 @@ export default class OpenIMSDK extends Emitter {
       flag: false,
     };
 
+    // 正在发送的数据，还没有得到 response 的数据
     this.ws2promise[ws2p.oid] = ws2p;
 
     const handleMessage = (ev: MessageEvent<string>) => {
@@ -1829,6 +1835,7 @@ export default class OpenIMSDK extends Emitter {
         return;
       }
 
+      // 下线逻辑 --> 主动下线
       if (params.reqFuncName === RequestFunc.LOGOUT) {
         this.logoutFlag = true;
         this.ws!.close();
@@ -1853,6 +1860,9 @@ export default class OpenIMSDK extends Emitter {
     try {
       if (this.platform == "web") {
         this.ws!.send(JSON.stringify(params));
+        //  ??? 为什么敢这么写？
+        // 例如此时同步发送 2 个 message ，那么 onmessage 函数不久被第二个覆盖了吗？
+        // handleMessage 和 params 有关系
         this.ws!.onmessage = handleMessage;
       } else {
         this.ws!.send({
