@@ -1775,6 +1775,13 @@ export default class OpenIMSDK extends Emitter {
 
   //tool methods
 
+  /**
+   * reject
+   * 1. 没有网络
+   * 2. 此时 ws.readyState 不是 1 2 ==> 
+   * 3. 后端传送的消息存在 errCode 字段
+   * 4. 触发了 close 事件
+   */
   private wsSend = (params: WsParams, resolve: (value: WsResponse | PromiseLike<WsResponse>) => void, reject: (reason?: any) => void) => {
     // 断网时候进行检测
     if (window?.navigator && !window.navigator.onLine) {
@@ -2024,6 +2031,7 @@ export default class OpenIMSDK extends Emitter {
         return;
       }
 
+      // 等 close 关闭时候 reconnect
       if (this.ws?.readyState !== this.ws?.CONNECTING && this.ws?.readyState !== this.ws?.OPEN) {
         this.reconnect();
         return;
